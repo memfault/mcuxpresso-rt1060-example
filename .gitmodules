@@ -1,0 +1,3 @@
+[submodule "memfault-firmware-sdk"]
+	path = memfault-firmware-sdk
+	url = https://github.com/memfault/memfault-firmware-sdk.git
