@@ -179,6 +179,7 @@ int read_request(void)
         PRINTF("  < HTTP 202 Accepted received!\n");
         ret = 0;
     } else {
+        PRINTF(" HTTP Response error:\n%s\n", https_buf);
         ret = -1;
     }
 

@@ -114,13 +114,7 @@ const sMfltCoredumpRegion *memfault_platform_coredump_get_regions(
   return &s_coredump_regions[0];
 }
 
-
-//! !FIXME: This function _must_ be called by your main() routine prior
-//! to starting an RTOS or baremetal loop.
 int memfault_platform_boot(void) {
-  // !FIXME: Add init to any platform specific ports here.
-  // (This will be done in later steps in the getting started Guide)
-
   const char banner[] = "\n\n"
                         "▙▗▌       ▗▀▖      ▜▐   \e[36m  ▄▄▀▀▄▄ \e[0m\n"
                         "▌▘▌▞▀▖▛▚▀▖▐  ▝▀▖▌ ▌▐▜▀  \e[36m █▄    ▄█\e[0m\n"
@@ -128,9 +122,14 @@ int memfault_platform_boot(void) {
                         "▘ ▘▝▀▘▘▝ ▘▐  ▝▀▘▝▀▘ ▘▀  \e[36m  ▀▀▄▄▀▀ \e[0m\n";
   PRINTF(banner);
 
+  // static RAM storage where logs will be stored. Storage can be any size
+  // you want but you will want it to be able to hold at least a couple logs.
+  static uint8_t s_log_buf_storage[512];
+
   memfault_build_info_dump();
   memfault_device_info_dump();
   memfault_platform_reboot_tracking_boot();
+  memfault_log_boot(s_log_buf_storage, sizeof(s_log_buf_storage));
 
   static uint8_t s_event_storage[1024];
   const sMemfaultEventStorageImpl *evt_storage =
@@ -140,7 +139,7 @@ int memfault_platform_boot(void) {
   memfault_reboot_tracking_collect_reset_info(evt_storage);
 
   sMemfaultMetricBootInfo boot_info = {
-    .unexpected_reboot_count = memfault_reboot_tracking_get_crash_count(),
+      .unexpected_reboot_count = memfault_reboot_tracking_get_crash_count(),
   };
   memfault_metrics_boot(evt_storage, &boot_info);
 
@@ -148,7 +147,6 @@ int memfault_platform_boot(void) {
 
   return 0;
 }
-
 
 void memfault_platform_log(eMemfaultPlatformLogLevel level, const char *fmt,
                            ...) {

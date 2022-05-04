@@ -15,8 +15,11 @@ extern "C" {
 // Enable GNU build ID
 #define MEMFAULT_USE_GNU_BUILD_ID 1
 
+// Explicitly capture log buffer in coredump
+#define MEMFAULT_COREDUMP_COLLECT_LOG_REGIONS 1
+
 // Application takes about 150kB, add 2 more kB for registers etc
-#define MEMFAULT_PLATFORM_COREDUMP_STORAGE_RAM_SIZE (152 * 1024)
+#define MEMFAULT_PLATFORM_COREDUMP_STORAGE_RAM_SIZE (250 * 1024)
 
 #ifdef __cplusplus
 }
