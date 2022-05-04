@@ -30,6 +30,9 @@
 #include "fsl_enet_mdio.h"
 #include "fsl_gpio.h"
 #include "fsl_iomuxc.h"
+
+#include "memfault/components.h"
+
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
@@ -103,10 +106,8 @@ void *pvPortCalloc(size_t num, size_t size)
     return ptr;
 }
 
-/*!
- * @brief The main function containing client thread.
- */
-static void httpsclient_task(void *arg)
+// Try to bring up the network interface. 0 for success, non-zero for failure
+static int netifinit(void)
 {
     static struct netif netif;
     ip4_addr_t netif_ipaddr, netif_netmask, netif_gw;
@@ -134,9 +135,18 @@ static void httpsclient_task(void *arg)
     struct dhcp *dhcp;
     dhcp = netif_dhcp_data(&netif);
 
-    while (dhcp->state != DHCP_STATE_BOUND)
+    const int retry_time_ms = 10 * 1000;
+    const TickType_t retry_ticks = retry_time_ms / portTICK_PERIOD_MS;
+    int retry_count = retry_ticks / 100;
+    while ((dhcp->state != DHCP_STATE_BOUND) && (retry_count > 0))
     {
         vTaskDelay(100);
+        retry_count--;
+    }
+
+    if (!retry_count) {
+        PRINTF("DHCP failed!\n");
+        return 1;
     }
 
     if (dhcp->state == DHCP_STATE_BOUND)
@@ -144,11 +154,87 @@ static void httpsclient_task(void *arg)
         PRINTF("\r\n IPv4 Address     : %u.%u.%u.%u\r\n", ((u8_t *)&netif.ip_addr.addr)[0],
                ((u8_t *)&netif.ip_addr.addr)[1], ((u8_t *)&netif.ip_addr.addr)[2], ((u8_t *)&netif.ip_addr.addr)[3]);
     }
-    PRINTF("DHCP OK");
+    PRINTF("DHCP OK\n");
 
+    return 0;
+}
+
+static void blinky_task(void *arg) {
+  (void)arg;
+
+  // set up GPIO1.8 as output for LED
+  const gpio_pin_config_t gpio_config = {
+      .direction = kGPIO_DigitalOutput,
+      .outputLogic = 0U,
+      .interruptMode = kGPIO_NoIntmode,
+  };
+  GPIO_PinInit(GPIO1, 8, &gpio_config);
+  IOMUXC_SetPinMux(IOMUXC_GPIO_AD_B0_08_GPIO1_IO08, 0U);
+  IOMUXC_SetPinConfig(IOMUXC_GPIO_AD_B0_08_GPIO1_IO08, 0x10B0U);
+
+  uint8_t output = 0;
+  while (1) {
+    GPIO_PinWrite(GPIO1, 8, output ^= 1);
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+  }
+}
+
+static int send_char(char c) {
+    PRINTF("%c", c);
+    return 0;
+}
+
+static sMemfaultShellImpl memfault_shell_impl = {
+    .send_char = send_char,
+};
+
+static int memfault_demo_cli_cmd_post_chunks(MEMFAULT_UNUSED int argc, MEMFAULT_UNUSED char *argv[]) {
+    if(!memfault_packetizer_data_available()) {
+        PRINTF("No Memfault data to send!\n");
+        return 0;
+    }
+
+    static bool netif_up = 0;
+    if (!netif_up) {
+        netif_up = !netifinit();
+        if (!netif_up) {
+            PRINTF("Failed to initialize netif\n");
+            return 1;
+        }
+    }
+
+    // this function will post any buffered memfault chunks
     https_client_tls_init();
 
-    vTaskDelete(NULL);
+    return 0;
+}
+
+// Define a custom console table to add the post_chunks command
+static const sMemfaultShellCommand s_memfault_shell_commands[] = {
+  {"get_core", memfault_demo_cli_cmd_get_core, "Get coredump info"},
+  {"clear_core", memfault_demo_cli_cmd_clear_core, "Clear an existing coredump"},
+  {"crash", memfault_demo_cli_cmd_crash, "Trigger a crash"},
+  {"trigger_logs", memfault_demo_cli_cmd_trigger_logs, "Trigger capture of current log buffer contents"},
+  {"drain_chunks",  memfault_demo_drain_chunk_data, "Flushes queued Memfault data. To upload data see https://mflt.io/posting-chunks-with-gdb"},
+  {"trace", memfault_demo_cli_cmd_trace_event_capture, "Capture an example trace event"},
+  {"get_device_info", memfault_demo_cli_cmd_get_device_info, "Get device info"},
+  {"reboot", memfault_demo_cli_cmd_system_reboot, "Reboot system and tracks it with a trace event"},
+  {"export", memfault_demo_cli_cmd_export, "Export base64-encoded chunks. To upload data see https://mflt.io/chunk-data-export"},
+  {"post_chunks", memfault_demo_cli_cmd_post_chunks, "Upload chunks to Memfault"},
+  {"help", memfault_shell_help_handler, "Lists all commands"},
+};
+// These definitions override the default implementation of the command table
+const sMemfaultShellCommand *const g_memfault_shell_commands = s_memfault_shell_commands;
+const size_t g_memfault_num_shell_commands = MEMFAULT_ARRAY_SIZE(s_memfault_shell_commands);
+
+static void console_task(void *arg) {
+    while (1) {
+        int c = GETCHAR();
+        if (c > 0){
+            memfault_demo_shell_receive_char(c);
+        }
+        vTaskDelay(1);
+    }
 }
 
 /*!
@@ -175,17 +261,21 @@ int main(void)
     GPIO_WritePinOutput(GPIO1, 9, 1);
     CRYPTO_InitHardware();
 
+    memfault_platform_boot();
+
+    memfault_demo_shell_boot(&memfault_shell_impl);
+
     mdioHandle.resource.csrClock_Hz = EXAMPLE_CLOCK_FREQ;
 
-    if (xTaskCreate(httpsclient_task, "httpsclient_task", 6000, NULL, configMAX_PRIORITIES - 4 /*3*/, NULL) != pdPASS)
-    {
-        PRINTF("Task creation failed!\r\n");
-        while (1)
-            ;
+    // if(!xTaskCreate(blinky_task, "blinky_task", 1000, NULL, configMAX_PRIORITIES - 5 /*4*/, NULL)) {
+    //     PRINTF("Failed to create blinky_task\r\n");
+    // }
+    if(!xTaskCreate(console_task, "console_task", 6000, NULL, configMAX_PRIORITIES - 4 /*3*/, NULL)) {
+        PRINTF("Failed to create console_task\r\n");
     }
 
-    /* Run RTOS */
-    vTaskStartScheduler();
+     /* Run RTOS */
+     vTaskStartScheduler();
 
     /* Should not reach this statement */
     for (;;)
