@@ -10,6 +10,10 @@ See information about the base example project in
 This project adds the Memfault SDK as a Git submodule, and enables the Memfault
 demo console commands for testing Memfault end-to-end.
 
+You can find some information about how this project was set up here:
+
+https://memfault.notion.site/NXP-RT1060-MCUXpresso-IDE-Sample-Project-812cc47b74bb4b1b9c2345009cc47da3
+
 ## Instructions
 
 1. clone this repo, with submodules:
@@ -28,3 +32,13 @@ demo console commands for testing Memfault end-to-end.
    # example, using pyserial-miniterm
    ❯ pyserial-miniterm --raw /dev/ttyACM0 115200
    ```
+
+The serial console provides a few test commands. `post_chunks` will attempt to
+connect and upload Memfault data. Be sure to upload a symbol file to see decoded
+data on the Memfault web app (upload the `.axf` file, either via the web app or
+using the [Memfault CLI
+tool](https://docs.memfault.com/docs/mcu/symbol-file-build-ids/#upload-symbol-files-cli))
+
+Note: be sure to detach the debugger before running the `crash`/`reboot`
+commands. Depending on configuration, that can prevent the board from correctly
+resetting.
