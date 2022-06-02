@@ -45,7 +45,9 @@ void memfault_platform_get_device_info(sMemfaultDeviceInfo *info) {
 //! Last function called after a coredump is saved. Should perform
 //! any final cleanup and then reset the device
 void memfault_platform_reboot(void) {
-  // !FIXME: Perform any final system cleanup here
+  // flush the data cache before issuing the reboot, to ensure the saved reboot
+  // reason data or RAM-backed coredump data is written out
+  SCB_CleanDCache();
 
   NVIC_SystemReset();
   while (1) { } // unreachable
