@@ -9,6 +9,7 @@
 
 #include "memfault/components.h"
 #include "memfault/ports/reboot_reason.h"
+#include "memfault/ports/freertos.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -128,6 +129,8 @@ int memfault_platform_boot(void) {
   // you want but you will want it to be able to hold at least a couple logs.
   static uint8_t s_log_buf_storage[512];
 
+  memfault_freertos_port_boot();
+
   memfault_build_info_dump();
   memfault_device_info_dump();
   memfault_platform_reboot_tracking_boot();
@@ -184,18 +187,6 @@ void memfault_platform_log(eMemfaultPlatformLogLevel level, const char *fmt,
   PRINTF("[%s] MFLT: %s\n", lvl_str, log_buf);
 
   va_end(args);
-}
-
-bool memfault_platform_metrics_timer_boot(
-    uint32_t period_sec, MemfaultPlatformTimerCallback callback) {
-  (void)period_sec, (void)callback;
-  // Schedule a timer to invoke callback() repeatedly after period_sec
-  return true;
-}
-
-uint64_t memfault_platform_get_time_since_boot_ms(void) {
-  // Return time since boot in ms, this is used for relative timings.
-  return 0;
 }
 
 MEMFAULT_PUT_IN_SECTION(".noinit.mflt_reboot_tracking")

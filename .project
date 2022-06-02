@@ -26,6 +26,11 @@
 	</natures>
 	<linkedResources>
 		<link>
+			<name>memfault__freertos</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
 			<name>memfault_components</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
@@ -36,9 +41,29 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
-			<name>memfaultport_components</name>
+			<name>mflt_port_components</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>memfault__freertos/memfault_core_freertos.c</name>
+			<type>1</type>
+			<locationURI>PARENT-0-PROJECT_LOC/memfault-firmware-sdk/ports/freertos/src/memfault_core_freertos.c</locationURI>
+		</link>
+		<link>
+			<name>memfault__freertos/memfault_freertos_ram_regions.c</name>
+			<type>1</type>
+			<locationURI>PARENT-0-PROJECT_LOC/memfault-firmware-sdk/ports/freertos/src/memfault_freertos_ram_regions.c</locationURI>
+		</link>
+		<link>
+			<name>memfault__freertos/memfault_metrics_freertos.c</name>
+			<type>1</type>
+			<locationURI>PARENT-0-PROJECT_LOC/memfault-firmware-sdk/ports/freertos/src/memfault_metrics_freertos.c</locationURI>
+		</link>
+		<link>
+			<name>memfault__freertos/memfault_panics_freertos.c</name>
+			<type>1</type>
+			<locationURI>PARENT-0-PROJECT_LOC/memfault-firmware-sdk/ports/freertos/src/memfault_panics_freertos.c</locationURI>
 		</link>
 		<link>
 			<name>memfault_components/arch_arm_cortex_m.c</name>
@@ -256,17 +281,7 @@
 			<locationURI>PARENT-0-PROJECT_LOC/memfault-firmware-sdk/components/util/src/memfault_varint.c</locationURI>
 		</link>
 		<link>
-			<name>memfault_includes/components</name>
-			<type>2</type>
-			<locationURI>virtual:/virtual</locationURI>
-		</link>
-		<link>
-			<name>memfault_includes/ports</name>
-			<type>2</type>
-			<locationURI>virtual:/virtual</locationURI>
-		</link>
-		<link>
-			<name>memfaultport_components/memfault_platform_ram_backed_coredump.c</name>
+			<name>mflt_port_components/memfault_platform_ram_backed_coredump.c</name>
 			<type>1</type>
 			<locationURI>PROJECT_LOC/memfault-firmware-sdk/ports/panics/src/memfault_platform_ram_backed_coredump.c</locationURI>
 		</link>

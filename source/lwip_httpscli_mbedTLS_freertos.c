@@ -23,6 +23,7 @@
 #include "enet_ethernetif.h"
 #include "fsl_phy.h"
 #include "ksdk_mbedtls.h"
+#include "timers.h"
 
 #include "fsl_debug_console.h"
 
@@ -159,6 +160,60 @@ static int netifinit(void)
     return 0;
 }
 
+static bool netif_up = false;
+static int prv_init_netif(void) {
+    if (!netif_up) {
+        netif_up = !netifinit();
+        if (!netif_up) {
+            PRINTF("Failed to initialize netif\n");
+            return 1;
+        }
+        PRINTF("Netif initialized!\n");
+    }
+    return 0;
+}
+
+static int prv_upload_memfault_data(void) {
+    if (!netif_up) {
+        return 1;
+    }
+    // this function will post any buffered memfault chunks
+    https_client_tls_init();
+
+    return 0;
+}
+
+static void prv_memfault_upload_timer_callback(MEMFAULT_UNUSED TimerHandle_t handle) {
+    if(!memfault_packetizer_data_available()) {
+        return;
+    }
+
+    prv_upload_memfault_data();
+}
+
+static void prv_initialize_periodic_upload_timer(void) {
+  // create a timer that will upload any data if available
+  const char *const pcTimerName = "MemfaultUploadTimer";
+  const int interval_in_seconds = 20;
+  const TickType_t xTimerPeriodInTicks = pdMS_TO_TICKS(1000 * interval_in_seconds);
+
+  TimerHandle_t timer;
+
+#if MEMFAULT_FREERTOS_PORT_USE_STATIC_ALLOCATION != 0
+  static StaticTimer_t s_task_watchdog_timer_context;
+  timer = xTimerCreateStatic(pcTimerName, xTimerPeriodInTicks, pdTRUE, NULL,
+                             prv_memfault_upload_timer_callback,
+                             &s_task_watchdog_timer_context);
+#else
+  timer = xTimerCreate(pcTimerName, xTimerPeriodInTicks, pdTRUE, NULL,
+                       prv_memfault_upload_timer_callback);
+#endif
+
+  MEMFAULT_ASSERT(timer != 0);
+
+  xTimerStart(timer, 0);
+}
+
 static void blinky_task(void *arg) {
   (void)arg;
 
@@ -194,19 +249,12 @@ static int memfault_demo_cli_cmd_post_chunks(MEMFAULT_UNUSED int argc, MEMFAULT_
         return 0;
     }
 
-    static bool netif_up = 0;
-    if (!netif_up) {
-        netif_up = !netifinit();
-        if (!netif_up) {
-            PRINTF("Failed to initialize netif\n");
-            return 1;
-        }
+    if(!netif_up) {
+        PRINTF("Network not up!\n");
+        return 0;
     }
 
-    // this function will post any buffered memfault chunks
-    https_client_tls_init();
-
-    return 0;
+    return prv_upload_memfault_data();
 }
 
 // Define a custom console table to add the post_chunks command
@@ -220,7 +268,7 @@ static const sMemfaultShellCommand s_memfault_shell_commands[] = {
   {"get_device_info", memfault_demo_cli_cmd_get_device_info, "Get device info"},
   {"reboot", memfault_demo_cli_cmd_system_reboot, "Reboot system and tracks it with a trace event"},
   {"export", memfault_demo_cli_cmd_export, "Export base64-encoded chunks. To upload data see https://mflt.io/chunk-data-export"},
-  {"post_chunks", memfault_demo_cli_cmd_post_chunks, "Upload chunks to Memfault"},
+  {"post_chunks", memfault_demo_cli_cmd_post_chunks, "Manually trigger uploading chunks to Memfault"},
   {"help", memfault_shell_help_handler, "Lists all commands"},
 };
 // These definitions override the default implementation of the command table
@@ -228,6 +276,20 @@ const sMemfaultShellCommand *const g_memfault_shell_commands = s_memfault_shell_
 const size_t g_memfault_num_shell_commands = MEMFAULT_ARRAY_SIZE(s_memfault_shell_commands);
 
 static void console_task(void *arg) {
+    PRINTF("\n\nStarting netif...\n");
+
+    if(prv_init_netif() != 0) {
+        PRINTF("Failed to initialize network. post_chunks will not work\n");
+    }
+
+    // now that the netif is up, safe to start the blinky task (I didn't debug
+    // why this interferes with that task, but it seems to)
+    if(!xTaskCreate(blinky_task, "blinky_task", 100, NULL, 2 /* just higher priority than console */, NULL)) {
+        PRINTF("Failed to create blinky_task\r\n");
+    }
+
+    prv_initialize_periodic_upload_timer();
+
     while (1) {
         int c = GETCHAR();
         if (c > 0){
@@ -262,15 +324,11 @@ int main(void)
     CRYPTO_InitHardware();
 
     memfault_platform_boot();
-
     memfault_demo_shell_boot(&memfault_shell_impl);
 
     mdioHandle.resource.csrClock_Hz = EXAMPLE_CLOCK_FREQ;
 
-    // if(!xTaskCreate(blinky_task, "blinky_task", 1000, NULL, configMAX_PRIORITIES - 5 /*4*/, NULL)) {
-    //     PRINTF("Failed to create blinky_task\r\n");
-    // }
-    if(!xTaskCreate(console_task, "console_task", 6000, NULL, configMAX_PRIORITIES - 4 /*3*/, NULL)) {
+    if(!xTaskCreate(console_task, "console_task", 2000, NULL, 1 /* low priority */, NULL)) {
         PRINTF("Failed to create console_task\r\n");
     }
 
