@@ -1,4 +1,9 @@
 //! Define custom system metrics to track. For example,
-// MEMFAULT_METRICS_KEY_DEFINE(main_task_stack_hwm, kMemfaultMetricType_Unsigned)
-// MEMFAULT_METRICS_KEY_DEFINE(ble_min_rssi, kMemfaultMetricType_Signed)
-// MEMFAULT_METRICS_KEY_DEFINE(mcu_sleep_time_ms, kMemfaultMetricType_Timer)
+MEMFAULT_METRICS_KEY_DEFINE(console_task_stack_hwm, kMemfaultMetricType_Unsigned)
+MEMFAULT_METRICS_KEY_DEFINE(timer_task_stack_hwm, kMemfaultMetricType_Unsigned)
+MEMFAULT_METRICS_KEY_DEFINE(upload_time_ms, kMemfaultMetricType_Timer)
+MEMFAULT_METRICS_KEY_DEFINE(lwip_stats_mem_avail, kMemfaultMetricType_Unsigned)
+MEMFAULT_METRICS_KEY_DEFINE(lwip_stats_tcp_xmit, kMemfaultMetricType_Unsigned)
+MEMFAULT_METRICS_KEY_DEFINE(lwip_stats_tcp_recv, kMemfaultMetricType_Unsigned)
+MEMFAULT_METRICS_KEY_DEFINE(lwip_stats_tcp_drop, kMemfaultMetricType_Unsigned)
+MEMFAULT_METRICS_KEY_DEFINE(lwip_stats_tcp_err, kMemfaultMetricType_Unsigned)

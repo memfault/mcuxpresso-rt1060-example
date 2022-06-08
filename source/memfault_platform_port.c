@@ -27,7 +27,7 @@ void memfault_platform_get_device_info(sMemfaultDeviceInfo *info) {
     // An ID that uniquely identifies the device in your fleet
     // (i.e serial number, mac addr, chip id, etc)
     // Regular expression defining valid device serials: ^[-a-zA-Z0-9_]+$
-    .device_serial = "DEMOSERIAL",
+    .device_serial = "NPX_IMX_RT1060_DEMO",
      // A name to represent the firmware running on the MCU.
     // (i.e "ble-fw", "main-fw", or a codename for your project)
     .software_type = "app-fw",
@@ -39,7 +39,7 @@ void memfault_platform_get_device_info(sMemfaultDeviceInfo *info) {
     // the same for a unique device.
     // (i.e evt, dvt, pvt, or rev1, rev2, etc)
     // Regular expression defining valid hardware versions: ^[-a-zA-Z0-9_\.\+]+$
-    .hardware_version = "dvt1",
+    .hardware_version = "MIMXRT1060-EVKB",
   };
 }
 
@@ -196,16 +196,4 @@ MEMFAULT_WEAK void memfault_platform_reboot_tracking_boot(void) {
   sResetBootupInfo reset_info = {0};
   memfault_reboot_reason_get(&reset_info);
   memfault_reboot_tracking_boot(s_reboot_tracking, &reset_info);
-}
-
-void memfault_reboot_reason_get(sResetBootupInfo *info) {
-  const uint32_t reset_cause = 0;  // TODO: Populate with MCU reset reason
-  eMemfaultRebootReason reset_reason = kMfltRebootReason_Unknown;
-
-  // TODO: Convert MCU specific reboot reason to memfault enum
-
-  *info = (sResetBootupInfo){
-      .reset_reason_reg = reset_cause,
-      .reset_reason = reset_reason,
-  };
 }

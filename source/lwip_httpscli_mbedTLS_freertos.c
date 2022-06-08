@@ -72,6 +72,7 @@
 
 static mdio_handle_t mdioHandle = {.ops = &EXAMPLE_MDIO_OPS};
 static phy_handle_t phyHandle   = {.phyAddr = EXAMPLE_PHY_ADDRESS, .mdioHandle = &mdioHandle, .ops = &EXAMPLE_PHY_OPS};
+static TaskHandle_t console_task_handle = NULL;
 
 /*******************************************************************************
  * Code
@@ -91,8 +92,6 @@ void delay(void)
     }
 }
 
-
-
 void *pvPortCalloc(size_t num, size_t size)
 {
     void *ptr;
@@ -105,6 +104,48 @@ void *pvPortCalloc(size_t num, size_t size)
     }
 
     return ptr;
+}
+
+void memfault_metrics_heartbeat_collect_data(void) {
+  PRINTF("\nCollecting metrics!\n");
+
+  TaskHandle_t timer_task_handle = xTimerGetTimerDaemonTaskHandle();
+  uint32_t timer_task_high_watermark =
+      sizeof(UBaseType_t) * uxTaskGetStackHighWaterMark(timer_task_handle);
+  memfault_metrics_heartbeat_set_unsigned(
+      MEMFAULT_METRICS_KEY(timer_task_stack_hwm), timer_task_high_watermark);
+//   PRINTF("Timer task high watermark: %d\n", timer_task_high_watermark);
+
+  if (console_task_handle) {
+    uint32_t console_task_high_watermark =
+        sizeof(UBaseType_t) * uxTaskGetStackHighWaterMark(console_task_handle);
+    memfault_metrics_heartbeat_set_unsigned(
+        MEMFAULT_METRICS_KEY(console_task_stack_hwm),
+        timer_task_high_watermark);
+    // PRINTF("Console task high watermark: %d\n", console_task_high_watermark);
+  }
+
+  memfault_metrics_heartbeat_set_unsigned(
+      MEMFAULT_METRICS_KEY(lwip_stats_mem_avail), lwip_stats.mem.avail);
+//   PRINTF("LWIP free heap: %d\n", lwip_stats.mem.avail);
+  memfault_metrics_heartbeat_set_unsigned(
+      MEMFAULT_METRICS_KEY(lwip_stats_tcp_xmit), lwip_stats.tcp.xmit);
+//   PRINTF("LWIP tcp xmit: %d\n", lwip_stats.tcp.xmit);
+  memfault_metrics_heartbeat_set_unsigned(
+      MEMFAULT_METRICS_KEY(lwip_stats_tcp_recv), lwip_stats.tcp.recv);
+//   PRINTF("LWIP tcp recv: %d\n", lwip_stats.tcp.recv);
+  memfault_metrics_heartbeat_set_unsigned(
+      MEMFAULT_METRICS_KEY(lwip_stats_tcp_drop), lwip_stats.tcp.drop);
+//   PRINTF("LWIP tcp drop: %d\n", lwip_stats.tcp.drop);
+  memfault_metrics_heartbeat_set_unsigned(
+      MEMFAULT_METRICS_KEY(lwip_stats_tcp_err), lwip_stats.tcp.err);
+//   PRINTF("LWIP tcp err: %d\n", lwip_stats.tcp.err);
+
+  // zero out lwip tcp stats
+  lwip_stats.tcp.xmit = 0;
+  lwip_stats.tcp.recv = 0;
+  lwip_stats.tcp.drop = 0;
+  lwip_stats.tcp.err = 0;
 }
 
 // Try to bring up the network interface. 0 for success, non-zero for failure
@@ -183,7 +224,9 @@ static int prv_upload_memfault_data(void) {
         return 1;
     }
     // this function will post any buffered memfault chunks
+    (void)memfault_metrics_heartbeat_timer_start(MEMFAULT_METRICS_KEY(upload_time_ms));
     https_client_tls_init();
+    (void)memfault_metrics_heartbeat_timer_stop(MEMFAULT_METRICS_KEY(upload_time_ms));
 
     return 0;
 }
@@ -333,7 +376,7 @@ int main(void)
 
     mdioHandle.resource.csrClock_Hz = EXAMPLE_CLOCK_FREQ;
 
-    if(!xTaskCreate(console_task, "console_task", 2000, NULL, 1 /* low priority */, NULL)) {
+    if(!xTaskCreate(console_task, "console_task", 2000, NULL, 1 /* low priority */, &console_task_handle)) {
         PRINTF("Failed to create console_task\r\n");
     }
 

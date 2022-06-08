@@ -27,7 +27,7 @@
 const char memfault_cert[] = MEMFAULT_ROOT_CERTS_DIGICERT_GLOBAL_ROOT_CA;
 
 // Memfault project key
-const char *memfault_project_key = "<YOUR PROJECT KEY HERE>";
+const char *memfault_project_key = "bf8KeeFTRvoO0XOnXbwYzWL8GNT9QK6X";
 
 // Switch this to get verbose debug prints
 #define DEBUG_PRINTF(...)
@@ -80,7 +80,7 @@ int write_request(void *chunk_data, size_t chunk_data_len)
 
     // format string for building the HTTP header
 #define POST_REQUEST                                                           \
-  "POST /api/v0/chunks/TESTSERIAL HTTP/1.1\r\n"                                \
+  "POST /api/v0/chunks/%s HTTP/1.1\r\n"                                \
   "Host:chunks.memfault.com\r\n"                                               \
   "User-Agent: MemfaultSDK/0.4.2\r\n"                                          \
   "Memfault-Project-Key:%s\r\n"                                                \
@@ -90,8 +90,11 @@ int write_request(void *chunk_data, size_t chunk_data_len)
 
     // format the request
     unsigned char sendbuf[1048];
-    size_t len = sprintf((char *)sendbuf, POST_REQUEST, memfault_project_key,
-                         chunk_data_len);
+    sMemfaultDeviceInfo device_info;
+    memfault_platform_get_device_info(&device_info);
+    size_t len =
+        sprintf((char *)sendbuf, POST_REQUEST, device_info.device_serial,
+                memfault_project_key, chunk_data_len);
 
     DEBUG_PRINTF( "  > Write to server:" );
 

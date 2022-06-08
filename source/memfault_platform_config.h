@@ -21,6 +21,10 @@ extern "C" {
 // Application takes about 150kB, add 2 more kB for registers etc
 #define MEMFAULT_PLATFORM_COREDUMP_STORAGE_RAM_SIZE (250 * 1024)
 
+// For demonstration purposes in this example app, setting the heartbeat
+// interval to be low
+#define MEMFAULT_METRICS_HEARTBEAT_INTERVAL_SECS 60
+
 #ifdef __cplusplus
 }
 #endif

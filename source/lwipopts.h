@@ -206,7 +206,7 @@ void sys_mark_tcpip_thread(void);
 
 /* ---------- Statistics options ---------- */
 #ifndef LWIP_STATS
-#define LWIP_STATS 0
+#define LWIP_STATS 1
 #endif
 #ifndef LWIP_PROVIDE_ERRNO
 #define LWIP_PROVIDE_ERRNO 1
