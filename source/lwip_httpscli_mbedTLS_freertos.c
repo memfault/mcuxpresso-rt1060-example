@@ -125,8 +125,13 @@ static int netifinit(void)
 
     tcpip_init(NULL, NULL);
 
-    netifapi_netif_add(&netif, &netif_ipaddr, &netif_netmask, &netif_gw, &enet_config, EXAMPLE_NETIF_INIT_FN,
-                       tcpip_input);
+    err_t err =
+        netifapi_netif_add(&netif, &netif_ipaddr, &netif_netmask, &netif_gw,
+                           &enet_config, EXAMPLE_NETIF_INIT_FN, tcpip_input);
+    if (err != ERR_OK) {
+      PRINTF("\n\r!!! Failed to initialize ethernetif !!!\n\r");
+      return -1;
+    }
     netifapi_netif_set_default(&netif);
     netifapi_netif_set_up(&netif);
 

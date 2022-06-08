@@ -69,10 +69,13 @@
 #endif
 #endif
 
-/*  Defines Ethernet Autonegotiation Timeout during initialization. 
- *  Set it to 0 to disable the waiting. */ 
+/*  Defines Ethernet Autonegotiation Timeout during initialization.
+ *  Set it to 0 to disable the waiting. */
 #ifndef ENET_ATONEGOTIATION_TIMEOUT
     #define ENET_ATONEGOTIATION_TIMEOUT     (0x2FFFFU)
+#endif
+#ifndef ENET_ATONEGOTIATION_RETRIES
+    #define ENET_ATONEGOTIATION_RETRIES     (1)
 #endif
 
 /* Define those to better describe your network interface. */
@@ -111,7 +114,7 @@ err_t ethernetif1_init(struct netif *netif);
 
 /**
  * This function should be called when a packet is ready to be read
- * from the interface. 
+ * from the interface.
  * It is used by bare-metal applications.
  *
  * @param netif the lwip network interface structure for this ethernetif

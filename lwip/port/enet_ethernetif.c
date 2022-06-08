@@ -66,10 +66,10 @@
  * Code
  ******************************************************************************/
 
-void ethernetif_phy_init(struct ethernetif *ethernetif,
-                         const ethernetif_config_t *ethernetifConfig,
-                         phy_speed_t *speed,
-                         phy_duplex_t *duplex)
+err_t ethernetif_phy_init(struct ethernetif *ethernetif,
+                          const ethernetif_config_t *ethernetifConfig,
+                          phy_speed_t *speed,
+                          phy_duplex_t *duplex)
 {
     phy_config_t phyConfig;
     status_t status;
@@ -85,7 +85,7 @@ void ethernetif_phy_init(struct ethernetif *ethernetif,
 
     LWIP_PLATFORM_DIAG(("Initializing PHY..."));
 
-    while ((initWaitCount < ENET_ATONEGOTIATION_TIMEOUT) && (!(link && autonego)))
+    while ((initWaitCount < ENET_ATONEGOTIATION_RETRIES) && (!(link && autonego)))
     {
         status = PHY_Init(ethernetifConfig->phyHandle, &phyConfig);
 
@@ -118,13 +118,16 @@ void ethernetif_phy_init(struct ethernetif *ethernetif,
         /* Get the actual PHY link speed. */
         PHY_GetLinkSpeedDuplex(ethernetifConfig->phyHandle, speed, duplex);
     }
-#if 0 /* Disable assert. If initial auto-negation is timeout, \ \
-         the ENET is set to default (100Mbs and full-duplex). */
     else
     {
+#if 0 /* Disable assert. If initial auto-negation is timeout, \ \
+         the ENET is set to default (100Mbs and full-duplex). */
         LWIP_ASSERT("\r\nGiving up PHY initialization. Please check the ENET cable connection and link partner setting and reset the board.\r\n", 0);
-    }
 #endif
+        return ERR_CONN;
+    }
+
+    return ERR_OK;
 }
 
 /**
@@ -260,7 +263,11 @@ err_t ethernetif_init(struct netif *netif, struct ethernetif *ethernetif,
     netif->flags |= NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP;
 
     /* ENET driver initialization.*/
-    ethernetif_enet_init(netif, ethernetif, ethernetifConfig);
+    err_t err = ethernetif_enet_init(netif, ethernetif, ethernetifConfig);
+    if (err != ERR_OK)
+    {
+        return err;
+    }
 
 #if LWIP_IPV6 && LWIP_IPV6_MLD
     /*
