@@ -27,7 +27,7 @@
 const char memfault_cert[] = MEMFAULT_ROOT_CERTS_DIGICERT_GLOBAL_ROOT_CA;
 
 // Memfault project key
-const char *memfault_project_key = "bf8KeeFTRvoO0XOnXbwYzWL8GNT9QK6X";
+const char *memfault_project_key = "<YOUR PROJECT KEY HERE>";
 
 // Switch this to get verbose debug prints
 #define DEBUG_PRINTF(...)
